@@ -43,3 +43,26 @@ module "gateways" {
 
   depends_on = [module.vpc, module.subnets]
 }
+
+module "eks" {
+  source = "./modules/eks"
+
+  project_name = local.project_name
+  vpc_id = module.vpc.vpc_id
+  private_subnet_ids = module.subnets.private_subnet_ids
+  tags = local.common_tags
+
+  depends_on = [ module.vpc, module.subnets, module.gateways ]
+}
+
+module "eks_node_group" {
+  source = "./modules/eks-node-group"
+
+  project_name = local.project_name
+  cluster_name = module.eks.cluster_name
+  node_role_arn = module.eks.node_role_arn
+  private_subnet_ids = module.subnets.private_subnet_ids
+  tags = local.common_tags
+
+  cluster_depends_on = [ module.eks ]
+}
