@@ -22,3 +22,8 @@ output "cluster_role_arn" {
   description = "ARN of the IAM role for the cluster"
   value       = aws_iam_role.cluster_role.arn
 }
+
+output "cluster_oidc_issuer" {
+  description = "The URL on the EKS cluster for the OpenID Connect identity provider"
+  value       = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
