@@ -39,19 +39,28 @@ resource "aws_iam_role_policy_attachment" "aws_load_balancer_controller" {
 resource "aws_iam_policy" "aws_load_balancer_controller" {
   name = "${var.project_name}-aws-load-balancer-controller"
 
-  policy = jsonencode({
+policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      # 1. Permissions for read-only access (Describe/Get/List)
+      {
+        Effect = "Allow"
+        Action = ["iam:CreateServiceLinkedRole"]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"
+          }
+        }
+      },
       {
         Effect = "Allow"
         Action = [
-          "iam:CreateServiceLinkedRole",
           "ec2:DescribeAccountAttributes",
           "ec2:DescribeAddresses",
           "ec2:DescribeAvailabilityZones",
           "ec2:DescribeInternetGateways",
           "ec2:DescribeVpcs",
+          "ec2:DescribeVpcPeeringConnections",
           "ec2:DescribeSubnets",
           "ec2:DescribeSecurityGroups",
           "ec2:DescribeInstances",
@@ -59,6 +68,7 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
           "ec2:DescribeTags",
           "ec2:GetCoipPoolUsage",
           "ec2:DescribeCoipPools",
+          "ec2:GetSecurityGroupsForVpc",
           "elasticloadbalancing:DescribeLoadBalancers",
           "elasticloadbalancing:DescribeLoadBalancerAttributes",
           "elasticloadbalancing:DescribeListeners",
@@ -68,11 +78,13 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
           "elasticloadbalancing:DescribeTargetGroups",
           "elasticloadbalancing:DescribeTargetGroupAttributes",
           "elasticloadbalancing:DescribeTargetHealth",
-          "elasticloadbalancing:DescribeTags"
+          "elasticloadbalancing:DescribeTags",
+          "elasticloadbalancing:DescribeTrustStores",
+          "elasticloadbalancing:DescribeListenerAttributes",
+          "elasticloadbalancing:DescribeCapacityReservation"
         ]
         Resource = "*"
       },
-      # 2. Permissions for authentication services and WAF
       {
         Effect = "Allow"
         Action = [
@@ -96,38 +108,83 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
         ]
         Resource = "*"
       },
-      # 3. Permissions for security group management
       {
         Effect = "Allow"
         Action = [
-          "ec2:CreateSecurityGroup",
-          "ec2:DeleteSecurityGroup",
-          "ec2:CreateTags",
           "ec2:AuthorizeSecurityGroupIngress",
           "ec2:RevokeSecurityGroupIngress"
         ]
         Resource = "*"
       },
-      # 4. Permissions for Load Balancer management
+      {
+        Effect = "Allow"
+        Action = ["ec2:CreateSecurityGroup"]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = ["ec2:CreateTags"]
+        Resource = "arn:aws:ec2:*:*:security-group/*"
+        Condition = {
+          StringEquals = {
+            "ec2:CreateAction": "CreateSecurityGroup"
+          }
+          Null = {
+            "aws:RequestTag/elbv2.k8s.aws/cluster": "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:CreateTags",
+          "ec2:DeleteTags"
+        ]
+        Resource = "arn:aws:ec2:*:*:security-group/*"
+        Condition = {
+          Null = {
+            "aws:RequestTag/elbv2.k8s.aws/cluster": "true"
+            "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:DeleteSecurityGroup"
+        ]
+        Resource = "*"
+        Condition = {
+          Null = {
+            "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+          }
+        }
+      },
       {
         Effect = "Allow"
         Action = [
           "elasticloadbalancing:CreateLoadBalancer",
-          "elasticloadbalancing:CreateTargetGroup",
+          "elasticloadbalancing:CreateTargetGroup"
+        ]
+        Resource = "*"
+        Condition = {
+          Null = {
+            "aws:RequestTag/elbv2.k8s.aws/cluster": "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "elasticloadbalancing:CreateListener",
-          "elasticloadbalancing:DeleteLoadBalancer",
-          "elasticloadbalancing:DeleteTargetGroup",
           "elasticloadbalancing:DeleteListener",
-          "elasticloadbalancing:ModifyLoadBalancerAttributes",
-          "elasticloadbalancing:SetIpAddressType",
-          "elasticloadbalancing:SetSecurityGroups",
-          "elasticloadbalancing:SetSubnets",
-          "elasticloadbalancing:ModifyTargetGroup",
-          "elasticloadbalancing:ModifyTargetGroupAttributes"
+          "elasticloadbalancing:CreateRule",
+          "elasticloadbalancing:DeleteRule"
         ]
         Resource = "*"
       },
-      # 5. Permissions for specific ELB tags with specific resources
       {
         Effect = "Allow"
         Action = [
@@ -139,8 +196,67 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
           "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
           "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
         ]
+        Condition = {
+          Null = {
+            "aws:RequestTag/elbv2.k8s.aws/cluster": "true"
+            "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+          }
+        }
       },
-      # 6. Permissions for target management
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:AddTags",
+          "elasticloadbalancing:RemoveTags"
+        ]
+        Resource = [
+          "arn:aws:elasticloadbalancing:*:*:listener/net/*/*/*",
+          "arn:aws:elasticloadbalancing:*:*:listener/app/*/*/*",
+          "arn:aws:elasticloadbalancing:*:*:listener-rule/net/*/*/*",
+          "arn:aws:elasticloadbalancing:*:*:listener-rule/app/*/*/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:ModifyLoadBalancerAttributes",
+          "elasticloadbalancing:SetIpAddressType",
+          "elasticloadbalancing:SetSecurityGroups",
+          "elasticloadbalancing:SetSubnets",
+          "elasticloadbalancing:DeleteLoadBalancer",
+          "elasticloadbalancing:ModifyTargetGroup",
+          "elasticloadbalancing:ModifyTargetGroupAttributes",
+          "elasticloadbalancing:DeleteTargetGroup",
+          "elasticloadbalancing:ModifyListenerAttributes",
+          "elasticloadbalancing:ModifyCapacityReservation"
+        ]
+        Resource = "*"
+        Condition = {
+          Null = {
+            "aws:ResourceTag/elbv2.k8s.aws/cluster": "false"
+          }
+        }
+      },
+      {
+        Effect = "Allow"
+        Action = ["elasticloadbalancing:AddTags"]
+        Resource = [
+          "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*",
+          "arn:aws:elasticloadbalancing:*:*:loadbalancer/net/*/*",
+          "arn:aws:elasticloadbalancing:*:*:loadbalancer/app/*/*"
+        ]
+        Condition = {
+          StringEquals = {
+            "elasticloadbalancing:CreateAction": [
+              "CreateTargetGroup",
+              "CreateLoadBalancer"
+            ]
+          }
+          Null = {
+            "aws:RequestTag/elbv2.k8s.aws/cluster": "false"
+          }
+        }
+      },
       {
         Effect = "Allow"
         Action = [
@@ -149,7 +265,6 @@ resource "aws_iam_policy" "aws_load_balancer_controller" {
         ]
         Resource = "arn:aws:elasticloadbalancing:*:*:targetgroup/*/*"
       },
-      # 7. Permissions for listener and certificate management
       {
         Effect = "Allow"
         Action = [
@@ -183,4 +298,61 @@ resource "helm_release" "aws_load_balancer_controller" {
   }
 
   depends_on = [ aws_iam_role_policy_attachment.aws_load_balancer_controller ]
+}
+
+resource "helm_release" "nginx_ingress" {
+  name = "nginx-ingress"
+  repository = "https://kubernetes.github.io/ingress-nginx"
+  chart = "ingress-nginx"
+  namespace = "ingress-nginx"
+  create_namespace = true
+
+  set {
+    name = "controller.service.type"
+    value = "ClusterIP"
+  }
+
+  set {
+    name = "controller.service.ipFamilies[0]"
+    # name = "controller.service.ipFamilies"
+    value = "IPv4"
+  }
+
+  depends_on = [ helm_release.aws_load_balancer_controller ]
+}
+
+resource "kubernetes_ingress_v1" "nginx_ingress_alb" {
+  metadata {
+    name = "nginx-ingress-alb"
+    namespace = "ingress-nginx"
+    annotations = {
+      "alb.ingress.kubernetes.io/scheme" = "internet-facing"
+      "alb.ingress.kubernetes.io/target-type" = "ip"
+      "alb.ingress.kubernetes.io/group.name" = "ingress-alb"
+      "alb.ingress.kubernetes.io/ip-address-type" = "ipv4"
+    }
+  }
+
+  spec {
+    ingress_class_name = "alb"
+
+    rule {
+      http {
+        path {
+          path = "/"
+          path_type = "Prefix"
+          backend {
+            service {
+              name = "nginx-ingress-ingress-nginx-controller"
+              port {
+                number = 80
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  depends_on = [ helm_release.nginx_ingress ]
 }
