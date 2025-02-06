@@ -37,8 +37,10 @@ This projects contains Terraform code to create a fully functional Amazon EKS (E
 
 ### Add-ons
 - Installs AWS Load Balancer Controller using Helm
+- Installs Nginx Ingress Controller using Helm
 - Sets up IAM roles and policies for the Load Balancer Controller
 - Configures OIDC-based authentication for service accounts
+- Configures ALB Ingress for Nginx Controller access
 
 ## Module Structure
 - `vpc`: Handles VPC creation and basic networking
@@ -47,6 +49,16 @@ This projects contains Terraform code to create a fully functional Amazon EKS (E
 - `eks`: Manaes the EKS cluster and its IAM roles
 - `eks-node-group`: Handles the EKS worker nodes configuration
 - `eks-add-ons`: Manages cluster add-ons and their IAM configurations
+
+## Ingress Architecture
+- AWS Application Load Balancer (ALB) as the external entry point
+- Nginx Ingress Controller running with ClusterIP service type
+- Two-tier ingress setup:
+  - ALB Ingress -> Nginx Ingress Controller
+  - Nginx Ingress -> Backend Services
+- Sample applications provided to test ingress routing:
+  - Blue/Green application (/blue and /green paths)
+  - Orange/Purple application (/orange and /purple paths)
 
 ## Security Features
 - Private subnets for worker nodes
@@ -63,11 +75,19 @@ All resources are tagged with:
 
 ## What's next?
 - [After creating the EKS cluster](docs/01-after-creating-eks.md)
-- TODO: Install and configure Ingress Controller
+- [Deploy sample applications to test Ingress routing](apps/README.md)
 
 ## Importante Notes
 - ***This is a test project to learn how to create a EKS cluster using Terraform, it is not intended to be used as a production cluster***
 - The cluster uses ARM-based instances for cost optimization
 - NAT Gateway is deployed in the first public subnet.
 - Load Balancer Controller is installed for mananing AWS ALB/NLB.
+- Nginx Ingress Controller is deployed with ClusterIP service type.
+- ALB Ingress is configured to route traffic to Nginx Ingress Controller.
 - All necessary networking componentes are properly configured for cluster communication.
+
+
+## References
+- [Install AWS Load Balancer Controller with Helm](https://docs.aws.amazon.com/eks/latest/userguide/lbc-helm.html)
+- [A deeper look at ingress sharing and target group binding in AWS Load Balancer Controller](https://aws.amazon.com/blogs/containers/a-deeper-look-at-ingress-sharing-and-target-group-binding-in-aws-load-balancer-controller/)
+- [Nginx Ingress Controller Installation Guide](https://kubernetes.github.io/ingress-nginx/deploy/)
