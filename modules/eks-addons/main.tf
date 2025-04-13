@@ -330,6 +330,9 @@ resource "kubernetes_ingress_v1" "nginx_ingress_alb" {
       "alb.ingress.kubernetes.io/target-type" = "ip"
       "alb.ingress.kubernetes.io/group.name" = "ingress-alb"
       "alb.ingress.kubernetes.io/ip-address-type" = "ipv4"
+      "alb.ingress.kubernetes.io/certificate-arn" = "arn:aws:acm:us-west-2:637423651351:certificate/33e161f3-d76e-454f-8252-b68861be0158, arn:aws:acm:us-west-2:637423651351:certificate/95d3133d-e849-4f7e-824d-3c39abb3e67e"
+      "alb.ingress.kubernetes.io/listen-ports" = "[{\"HTTP\": 80}, {\"HTTPS\": 443}]"
+      #"alb.ingress.kubernetes.io/ssl-redirect" = "443"
     }
   }
 
