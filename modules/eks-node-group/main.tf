@@ -14,8 +14,6 @@ resource "aws_eks_node_group" "arm64" {
   instance_types = ["t4g.medium"]
   disk_size = 20
 
-  remote_access {}
-
   tags = var.tags
 
   depends_on = [
@@ -38,8 +36,6 @@ resource "aws_eks_node_group" "amd64" {
   ami_type = "AL2_x86_64" # Amazon Linux 2 x86_64
   instance_types = ["t3.medium"]
   disk_size = 20
-
-  remote_access {}
 
   tags = merge(
     var.tags,
