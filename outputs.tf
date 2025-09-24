@@ -47,3 +47,18 @@ output "windows_api_private_key_path" {
   description = "Path to the generated private key for the Windows API EC2 instance"
   value       = module.ec2.private_key_path
 }
+
+output "windows_api_service_name" {
+  description = "Kubernetes service name for the Windows API"
+  value       = module.k8s_windows_api.service_name
+}
+
+output "windows_api_ingress_name" {
+  description = "Kubernetes ingress name for the Windows API"
+  value       = module.k8s_windows_api.ingress_name
+}
+
+output "windows_api_namespace" {
+  description = "Namespace where the Windows API Kubernetes resources were created"
+  value       = module.k8s_windows_api.namespace
+}

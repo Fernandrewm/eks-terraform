@@ -134,3 +134,16 @@ module "ec2" {
   http_ingress_cidrs       = [module.vpc.vpc_cidr]
   private_key_output_path  = "${path.root}/generated/windows-api-key.pem"
 }
+
+module "k8s_windows_api" {
+  source = "./modules/k8s-windows-api"
+
+  project_name   = local.project_name
+  endpoint_ips   = [module.ec2.private_ip]
+  namespace      = "default"
+  service_name   = "windows-api-service"
+  ingress_name   = "windows-api-ingress"
+  path           = "/api/inventario/"
+
+  depends_on = [module.eks_addons]
+}
