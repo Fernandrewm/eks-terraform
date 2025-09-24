@@ -67,6 +67,13 @@ This projects contains Terraform code to create a fully functional Amazon EKS (E
 - OIDC integration for service accounts
 - Private endpoint access enabled
 
+## Windows API Instance Access
+- Terraform instala y habilita OpenSSH Server en la instancia Windows durante el aprovisionamiento.
+- La clave privada generada se almacena en `generated/windows-api-key.pem`.
+- Acceso SSH de ejemplo: `ssh -i generated/windows-api-key.pem Administrator@<windows-api-public-ip>`.
+- Puedes inyectar claves públicas adicionales usando la variable `module "ec2" -> additional_ssh_public_keys` (útil para GitHub Actions u otros automatismos).
+- Restringe el puerto 22 en el security group `eks-terraform-windows-api-sg` para mayor seguridad o considera Session Manager si prefieres evitar exponer SSH.
+
 ## Tagging Strategy
 All resources are tagged with:
 - Project name

@@ -49,4 +49,12 @@ variable "http_ingress_cidrs" {
   default     = ["10.0.0.0/16"]
 }
 
+variable "additional_ssh_public_keys" {
+  description = "Lista adicional de claves públicas SSH para autorizar en la instancia"
+  type        = list(string)
+  default     = []
+  nullable    = false
+  sensitive   = true
+}
+
 

@@ -14,6 +14,15 @@ resource "tls_private_key" "windows_api" {
   rsa_bits  = 4096
 }
 
+locals {
+  ssh_public_keys = distinct(concat(
+    [tls_private_key.windows_api.public_key_openssh],
+    var.additional_ssh_public_keys
+  ))
+
+  ssh_authorized_keys = join("\n", local.ssh_public_keys)
+}
+
 resource "local_file" "windows_api_private_key" {
   filename          = var.private_key_output_path
   sensitive_content = tls_private_key.windows_api.private_key_pem
@@ -75,6 +84,11 @@ resource "aws_instance" "windows_api" {
   vpc_security_group_ids      = [aws_security_group.windows_api.id]
   associate_public_ip_address = true
   key_name                    = aws_key_pair.windows_api.key_name
+
+  user_data_replace_on_change = true
+  user_data = templatefile("${path.module}/userdata.ps1.tpl", {
+    authorized_keys = local.ssh_authorized_keys
+  })
 
   tags = merge(
     var.tags,
