@@ -6,6 +6,9 @@ terraform {
     tls = {
       source = "hashicorp/tls"
     }
+    local = {
+      source = "hashicorp/local"
+    }
   }
 }
 
@@ -119,4 +122,15 @@ module "ecr" {
 
   project_name = local.project_name
   tags         = local.common_tags
+}
+
+module "ec2" {
+  source = "./modules/ec2"
+
+  project_name             = local.project_name
+  vpc_id                   = module.vpc.vpc_id
+  public_subnet_id         = module.subnets.public_subnet_ids[0]
+  tags                     = local.common_tags
+  http_ingress_cidrs       = [module.vpc.vpc_cidr]
+  private_key_output_path  = "${path.root}/generated/windows-api-key.pem"
 }

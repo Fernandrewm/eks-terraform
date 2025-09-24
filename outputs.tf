@@ -27,3 +27,23 @@ output "backend_ventas_repository_url" {
   description = "URL of the ECR repository for backend-ventas"
   value       = module.ecr.backend_ventas_repository_url
 }
+
+output "windows_api_instance_id" {
+  description = "ID of the Windows API EC2 instance"
+  value       = module.ec2.instance_id
+}
+
+output "windows_api_public_ip" {
+  description = "Public IP address of the Windows API EC2 instance"
+  value       = module.ec2.public_ip
+}
+
+output "windows_api_security_group_id" {
+  description = "Security group ID of the Windows API EC2 instance"
+  value       = module.ec2.security_group_id
+}
+
+output "windows_api_private_key_path" {
+  description = "Path to the generated private key for the Windows API EC2 instance"
+  value       = module.ec2.private_key_path
+}
