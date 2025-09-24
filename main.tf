@@ -113,3 +113,10 @@ module "eks_addons" {
 
   depends_on = [ module.eks, module.eks_node_group ]
 }
+
+module "ecr" {
+  source = "./modules/ecr"
+
+  project_name = local.project_name
+  tags         = local.common_tags
+}
