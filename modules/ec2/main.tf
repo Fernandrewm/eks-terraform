@@ -55,9 +55,17 @@ resource "aws_security_group" "windows_api" {
   }
 
   ingress {
+    description = "RDP access"
+    from_port   = 3389
+    to_port     = 3389
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     description = "HTTP access from VPC"
-    from_port   = 80
-    to_port     = 80
+    from_port   = 5085
+    to_port     = 5085
     protocol    = "tcp"
     cidr_blocks = var.http_ingress_cidrs
   }

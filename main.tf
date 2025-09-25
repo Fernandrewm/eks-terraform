@@ -145,6 +145,7 @@ module "k8s_windows_api" {
   service_name = "windows-api-service"
   ingress_name = "windows-api-ingress"
   path         = "/api/inventario/"
+  service_port = 5085
 
   depends_on = [module.eks_addons]
 }

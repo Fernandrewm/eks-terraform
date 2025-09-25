@@ -52,5 +52,7 @@ if (-not (Get-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -ErrorAction Silentl
   New-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -DisplayName 'OpenSSH SSH Server (TCP)' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
 }
 Set-NetFirewallRule -Name 'OpenSSH-Server-In-TCP' -Profile Domain,Private,Public -Enabled True
+
+New-NetFirewallRule -DisplayName 'Windows API 5085' -Direction Inbound -Protocol TCP -LocalPort 5085 -Action Allow
 </powershell>
 
