@@ -1,6 +1,6 @@
 # Terraform EKS Cluster
 
-This projects contains Terraform code to create a fully functional Amazon EKS (Elastic Kubernetes Service) cluster with all the necessary networking infrastructure on AWS.
+This projects contains Terraform code to create a fully functional Amazon EKS (Elastic Kubernetes Service) cluster with all the necessary networking infrastructure on AWS, plus supporting components for container registries, Windows interoperability, and ingress management.
 
 ## Infrastructure Overview
 
@@ -15,6 +15,12 @@ This projects contains Terraform code to create a fully functional Amazon EKS (E
   - Public route table: Routes traffic through Internet Gateway
   - Private route table: Routes traffic through NAT Gateway
 
+### Container Registry (ECR)
+- Provisiona dos repositorios ECR dedicados:
+  - `frontend-dashboard`
+  - `backend-ventas`
+- Habilita cifrado en repositorio (AES256) y expone las URLs via outputs de Terraform para integraciones CI/CD.
+
 ### EKS Cluster
 - Create an EKS Cluster version 1.32
 - Deploys the cluster control plane in the private subnets
@@ -24,10 +30,11 @@ This projects contains Terraform code to create a fully functional Amazon EKS (E
 
 ### Node Group
 - Creates a managed node group with:
-  - ARM-based instances (t4g.medium)
+  - x86_64-based instances (t3.medium)
   - Auto-scaling configuration (min: 2, desired: 2, max: 3 nodes)
   - 20GB disk size per node
   - Deployed in private subnets
+- Etiqueta `kubernetes.io/arch=amd64` para distinguir workloads y compatibilidad con ingress basado en NGINX.
 - Configures requried IAM roles and policies for nodes including:
   - EKS worker node policy
   - CNI policy
@@ -40,7 +47,14 @@ This projects contains Terraform code to create a fully functional Amazon EKS (E
 - Installs Nginx Ingress Controller using Helm
 - Sets up IAM roles and policies for the Load Balancer Controller
 - Configures OIDC-based authentication for service accounts
-- Configures ALB Ingress for Nginx Controller access
+- Configures ALB Ingress for Nginx Controller access y publica un `Ingress` adicional para exponer el controlador por medio de un Application Load Balancer con esquema internet-facing.
+- Despliega un `IngressClass` basado en ALB y habilita reutilización de grupo (`alb.ingress.kubernetes.io/group.name`).
+
+### Windows API Bridge
+- Crea una instancia Windows Server con OpenSSH configurado y puerto 5085 expuesto dentro del VPC CIDR.
+- Genera automáticamente un nuevo par de llaves (`generated/windows-api-key.pem`) y permite añadir claves adicionales.
+- Publica un `Service`, `Endpoints` y `Ingress` en Kubernetes que enrutan `/api/inventario/` hacia la instancia Windows a través del NGINX Ingress Controller.
+- Permite personalizar anotaciones, `IngressClass` y direcciones IP de backend con variables del módulo.
 
 ## Module Structure
 - `vpc`: Handles VPC creation and basic networking
@@ -48,17 +62,22 @@ This projects contains Terraform code to create a fully functional Amazon EKS (E
 - `gateways`: Configures Internet Gateway, NAT Gateway and Route Tables
 - `eks`: Manaes the EKS cluster and its IAM roles
 - `eks-node-group`: Handles the EKS worker nodes configuration
-- `eks-add-ons`: Manages cluster add-ons and their IAM configurations
+- `eks-addons`: Manages cluster add-ons (AWS Load Balancer Controller, nginx-ingress) and their IAM configurations
+- `ecr`: Provisiona repositorios ECR para front y back
+- `ec2`: Administra la instancia Windows API, security groups y claves
+- `k8s-windows-api`: Publica la capa de networking en Kubernetes contra la instancia Windows
 
 ## Ingress Architecture
 - AWS Application Load Balancer (ALB) as the external entry point
 - Nginx Ingress Controller running with ClusterIP service type
 - Two-tier ingress setup:
   - ALB Ingress -> Nginx Ingress Controller
-  - Nginx Ingress -> Backend Services
+  - Nginx Ingress -> Backend Services (workloads Linux en Kubernetes)
+  - Nginx Ingress -> Windows API Service (backing EC2 instance)
 - Sample applications provided to test ingress routing:
   - Blue/Green application (/blue and /green paths)
   - Orange/Purple application (/orange and /purple paths)
+- Windows API expuesto vía `/api/inventario/` y balanceado por Nginx.
 
 ## Security Features
 - Private subnets for worker nodes
@@ -66,6 +85,13 @@ This projects contains Terraform code to create a fully functional Amazon EKS (E
 - IAM roles with least privileges access
 - OIDC integration for service accounts
 - Private endpoint access enabled
+
+## Windows API Instance Access
+- Terraform instala y habilita OpenSSH Server y reglas de firewall (22, 3389, 5085) en la instancia Windows durante el aprovisionamiento.
+- La clave privada generada se almacena en `generated/windows-api-key.pem`.
+- Acceso SSH de ejemplo: `ssh -i generated/windows-api-key.pem Administrator@<windows-api-public-ip>`.
+- Puedes inyectar claves públicas adicionales usando la variable `module "ec2" -> additional_ssh_public_keys` (útil para GitHub Actions u otros automatismos).
+- Restringe el puerto 22 en el security group `eks-terraform-windows-api-sg` para mayor seguridad o considera Session Manager si prefieres evitar exponer SSH.
 
 ## Tagging Strategy
 All resources are tagged with:
@@ -79,7 +105,7 @@ All resources are tagged with:
 
 ## Importante Notes
 - ***This is a test project to learn how to create a EKS cluster using Terraform, it is not intended to be used as a production cluster***
-- The cluster uses ARM-based instances for cost optimization
+- The cluster uses x86_64 instances optimizadas para compatibilidad amplia con workloads y controladores
 - NAT Gateway is deployed in the first public subnet.
 - Load Balancer Controller is installed for mananing AWS ALB/NLB.
 - Nginx Ingress Controller is deployed with ClusterIP service type.

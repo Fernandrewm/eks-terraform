@@ -64,3 +64,11 @@ When connecting from outside AWS CloudShell:
 - Verify your AWS credentials have the necessary permissions to interact with EKS.
 - Check that security groups allow traffic from your location to the cluster.
 - If using private endpoints, ensure you have proper VPN.
+
+## Next steps
+
+- Deploy the sample apps under apps/ to validate the ALB -> NGINX -> Linux workloads flow.
+
+- Confirm that the windows-api-ingress routes correctly to the Windows instance by visiting http://<alb-ingress-endpoint>/api/inventario/.
+
+- Rotate or download the private key generated at generated/windows-api-key.pem if you plan to access the Windows instance via SSH/RDP.
